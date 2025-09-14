@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>File Browser</title>
+    <link rel="stylesheet" href="/shttps-static-public/common.css">
+    <link rel="stylesheet" href="/shttps-static-public/file-browser/file-browser.css">
+</head>
+<body>
+    <div id="actionbar">
+        <span id="path">/</span>
+        <button id="upload-button" onclick="doUpload()">UPLOAD FILES<div class="button__progress"></div></button>
+        <input type="file" id="files" onchange="onUploadFilesSelected(this)" multiple webkitdirectory directory style="display: none;">
+        <button id="select-button" onclick="onSelectModeClick(this)">SELECT</button>
+        <button id="rename-button" onclick="onRenameClick()" disabled>RENAME</button>
+        <button id="cut-button" onclick="onPushToClipboardClick('move')" disabled>CUT</button>
+        <button id="copy-button" onclick="onPushToClipboardClick('copy')" disabled>COPY</button>
+        <button id="paste-button" onclick="onPasteClick()" disabled>PASTE</button>
+        <button id="delete-button" onclick="onDeleteClick()" disabled>DELETE</button>
+        <button id="zip-button" onclick="onZipClick()" disabled>ZIP</button>
+        <button id="new-folder-button" onclick="onNewFolderClick()">NEW FOLDER</button>
+        <button id="new-file-button" onclick="onNewFileClick()">NEW FILE</button>
+        <div id="view-mode">
+            <input type="radio" id="radioList" name="view" value="list" onchange="viewModeChange(this)"><label for="radioList">List</label>
+            <input type="radio" id="radioTable" name="view" value="table" onchange="viewModeChange(this)"><label for="radioTable">Table</label>
+            <input type="radio" id="radioGrid" name="view" value="grid" onchange="viewModeChange(this)"><label for="radioGrid">Grid</label>
+        </div>
+        <button id="menu-button" onclick="onMenuClick(event)">MENU</button>
+    </div>
+    <div id="files-container"></div>
+    <div id="loader" style="visibility: hidden;">Loading...</div>
+    <div id="drop-hint" style="display: none;">Drop files here to upload</div>
+    <div id="context-menu" class="context-menu">
+        <div id="mo-open-in-new-tab" class="context-menu-item">Open in new tab</div>
+        <div id="mo-edit-as-text" class="context-menu-item">Edit as text</div>
+        <div id="mo-rename" class="context-menu-item">Rename</div>
+        <div id="mo-delete" class="context-menu-item">Delete</div>
+        <div id="mo-download" class="context-menu-item">Download</div>
+        <div id="mo-zip" class="context-menu-item">Zip</div>
+        <div id="mo-copy-link" class="context-menu-item">Copy link</div>
+    </div>
+    <div id="main-menu" class="context-menu">
+        <div id="mm-login" class="context-menu-item">Login</div>
+        <div id="mm-logout" class="context-menu-item">Logout</div>
+    </div>
+
+    <script src="/shttps-static-public/common.js"></script>
+    <script src="/shttps-static-public/file-browser/file-browser.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', onPageLoad);
+    </script>
+</body>
+</html>
