@@ -1,7 +1,7 @@
 package api
 
 import (
-	"backend/filesystem"
+	"filesystem"
 	"encoding/json"
 	"net/http"
 	"path/filepath"

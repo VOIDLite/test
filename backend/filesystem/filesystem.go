@@ -206,7 +206,7 @@ func Zip(files []string, destination io.Writer, rootPath string) error {
 				} else {
 					header.Method = zip.Deflate
 				}
-				writer, err := zipWriter..CreateHeader(header)
+				writer, err := zipWriter.CreateHeader(header)
 				if err != nil {
 					return err
 				}

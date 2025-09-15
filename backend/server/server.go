@@ -1,7 +1,7 @@
 package server
 
 import (
-	"backend/api"
+	"api"
 	"net/http"
 	"os"
 	"path/filepath"
