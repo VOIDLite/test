@@ -28,13 +28,12 @@ pkg install clang
 Untuk mengkompilasi server, jalankan perintah berikut di direktori root proyek:
 
 ```bash
-clang++ shttp.cpp -o shttp -std=c++17 -lstdc++fs
+clang++ shttp.cpp -o shttp -std=c++17
 ```
 
 *   `shttp.cpp`: File sumber utama.
 *   `-o shttp`: Menentukan nama file output yang dapat dieksekusi.
-*   `-std=c++17`: Menggunakan standar C++17, yang diperlukan untuk fitur `std::filesystem`.
-*   `-lstdc++fs`: Menautkan pustaka sistem file C++.
+*   `-std=c++17`: Menggunakan standar C++17, yang diperlukan untuk fitur `std::filesystem`. Pada compiler modern, ini sudah termasuk dalam pustaka standar dan tidak memerlukan flag linking terpisah.
 
 ## Menjalankan Server
 
