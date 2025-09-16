@@ -510,22 +510,31 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    // Dapatkan path direktori eksekusi
+    std::string exe_path = argv[0];
+    std::string exe_directory = std::filesystem::path(exe_path).parent_path().string();
+    if (exe_directory.empty()) {
+        exe_directory = ".";
+    }
+
     // Ubah ke path absolut
     try {
-        root_directory = std::filesystem::canonical(root_directory);
+        root_directory = std::filesystem::absolute(root_directory);
     } catch (const std::filesystem::filesystem_error& e) {
-        std::cerr << "Error: Root directory not found: " << root_directory << std::endl;
+        std::cerr << "Error resolving root directory: " << e.what() << std::endl;
         return 1;
     }
 
     std::cout << "Starting server on port " << port << " serving " << root_directory << std::endl;
+    std::cout << "Executable directory: " << exe_directory << std::endl;
 
-    start_server(port, root_directory);
+
+    start_server(port, root_directory, exe_directory);
 
     return 0;
 }
 
-void start_server(int port, const std::string& root_directory) {
+void start_server(int port, const std::string& root_directory, const std::string& exe_directory) {
     int server_fd;
     struct sockaddr_in address;
     int opt = 1;
@@ -568,72 +577,78 @@ void start_server(int port, const std::string& root_directory) {
         }
 
         // Buat thread baru untuk setiap koneksi
-        std::thread(handle_connection, client_socket, root_directory).detach();
+        std::thread(handle_connection, client_socket, root_directory, exe_directory).detach();
     }
 }
 
-void handle_connection(int client_socket, const std::string& root_directory) {
+void handle_connection(int client_socket, const std::string& root_directory, const std::string& exe_directory) {
     HttpRequest req = parse_request(client_socket);
 
-    if (req.method.empty()) {
+    if (req.method.empty() || req.path.empty()) {
         close(client_socket);
         return;
     }
 
     std::cout << "Request: " << req.method << " " << req.path << std::endl;
 
-    // Mencegah directory traversal
-    std::filesystem::path requested_path = root_directory;
+    // Rute 1: Permintaan untuk aset statis frontend
+    if (req.path.rfind("/frontend/", 0) == 0) {
+        std::filesystem::path asset_path = exe_directory;
+        asset_path /= req.path.substr(1);
 
-    // Hapus tanda '/' di awal path jika ada
-    if (!req.path.empty() && req.path[0] == '/') {
-        requested_path /= req.path.substr(1);
-    } else {
-        requested_path /= req.path;
-    }
+        try {
+            asset_path = std::filesystem::canonical(asset_path);
+            std::string exe_frontend_path = std::filesystem::canonical(std::filesystem::path(exe_directory) / "frontend").string();
 
-    std::filesystem::path canonical_path;
-    try {
-        canonical_path = std::filesystem::canonical(requested_path);
-    } catch (const std::filesystem::filesystem_error& e) {
-        std::cerr << "Error: Path not found: " << requested_path << std::endl;
-        send_response(client_socket, "404 Not Found", "text/plain", "File not found.");
+            // Security check: Pastikan path tidak keluar dari direktori frontend
+            if (asset_path.string().rfind(exe_frontend_path, 0) != 0) {
+                 send_response(client_socket, "403 Forbidden", "text/plain", "Access denied.");
+            } else if (std::filesystem::is_regular_file(asset_path)) {
+                std::ifstream file(asset_path, std::ios::binary);
+                std::stringstream buffer;
+                buffer << file.rdbuf();
+                send_response(client_socket, "200 OK", get_mime_type(asset_path.string()), buffer.str());
+            } else {
+                send_response(client_socket, "404 Not Found", "text/plain", "Static asset not found.");
+            }
+        } catch (const std::filesystem::filesystem_error& e) {
+            send_response(client_socket, "404 Not Found", "text/plain", "Static asset not found.");
+        }
         close(client_socket);
         return;
     }
 
-    // Cek apakah ini adalah permintaan API
+    // Rute 2: Permintaan API
     if (req.path.rfind("/api/", 0) == 0) {
         handle_api_request(client_socket, req, root_directory);
         close(client_socket);
         return;
     }
 
-    // Verifikasi bahwa path yang diminta berada di dalam root directory
-    std::string root_str = std::filesystem::canonical(root_directory).string();
-    std::string path_str = canonical_path.string();
-    if (path_str.rfind(root_str, 0) != 0) {
-        send_response(client_socket, "403 Forbidden", "text/plain", "Access denied.");
-        close(client_socket);
-        return;
-    }
+    // Rute 3: Permintaan penjelajahan file/folder atau unduhan
+    std::filesystem::path user_file_path = root_directory;
+    user_file_path /= req.path.substr(1);
 
-    if (std::filesystem::is_regular_file(canonical_path)) {
-        std::ifstream file(canonical_path, std::ios::binary);
-        if (file) {
+     try {
+        user_file_path = std::filesystem::canonical(user_file_path);
+        std::string root_str = std::filesystem::canonical(root_directory).string();
+
+        // Security check: Pastikan path tidak keluar dari direktori root yang disajikan
+        if (user_file_path.string().rfind(root_str, 0) != 0) {
+            send_response(client_socket, "403 Forbidden", "text/plain", "Access denied.");
+        } else if (std::filesystem::is_directory(user_file_path)) {
+            std::string html = generate_file_browser_html();
+            send_response(client_socket, "200 OK", "text/html", html);
+        } else if (std::filesystem::is_regular_file(user_file_path)) {
+            std::ifstream file(user_file_path, std::ios::binary);
             std::stringstream buffer;
             buffer << file.rdbuf();
-            std::string content = buffer.str();
-            send_response(client_socket, "200 OK", get_mime_type(path_str), content);
+            send_response(client_socket, "200 OK", get_mime_type(user_file_path.string()), buffer.str());
         } else {
-            send_response(client_socket, "500 Internal Server Error", "text/plain", "Could not read file.");
+            send_response(client_socket, "404 Not Found", "text/plain", "Resource not found.");
         }
-    } else if (std::filesystem::is_directory(canonical_path)) {
-        // Jika path adalah direktori, sajikan HTML file browser
-        std::string html = generate_file_browser_html();
-        send_response(client_socket, "200 OK", "text/html", html);
-    } else {
-        send_response(client_socket, "404 Not Found", "text/plain", "Resource not found.");
+    } catch (const std::filesystem::filesystem_error& e) {
+        send_response(client_socket, "404 Not Found", "text/plain", "File or directory not found.");
     }
 
     close(client_socket);

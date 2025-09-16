@@ -20,10 +20,10 @@ struct HttpRequest {
 };
 
 // Fungsi untuk memulai server
-void start_server(int port, const std::string& root_directory);
+void start_server(int port, const std::string& root_directory, const std::string& exe_directory);
 
 // Fungsi untuk menangani koneksi klien
-void handle_connection(int client_socket, const std::string& root_directory);
+void handle_connection(int client_socket, const std::string& root_directory, const std::string& exe_directory);
 
 // Fungsi untuk parsing permintaan HTTP
 HttpRequest parse_request(int client_socket);
